@@ -6,6 +6,8 @@
 <title>Agrégateur VMA — Bilan de Classe</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- ═══ jsQR — décodeur QR fiable (remplace le décodeur maison) ═══ -->
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;700&display=swap');
   :root{
@@ -23,21 +25,17 @@
   main{padding:28px;max-width:1100px;margin:0 auto;}
   .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;margin-bottom:20px;}
   .card h2{font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:2px;color:var(--accent);margin-bottom:16px;}
-  /* Drop Zone */
   .drop-zone{border:2px dashed var(--border);border-radius:var(--radius);padding:40px;text-align:center;cursor:pointer;transition:all .3s;position:relative;}
   .drop-zone:hover,.drop-zone.drag-over{border-color:var(--accent);background:rgba(0,229,255,.05);}
   .drop-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
   .drop-icon{font-size:2.5rem;margin-bottom:12px;}
   .drop-zone h3{font-family:'Bebas Neue',sans-serif;font-size:1.2rem;letter-spacing:2px;color:var(--text);margin-bottom:6px;}
   .drop-zone p{color:var(--muted);font-size:.85rem;}
-  /* Manual paste zone */
   .paste-area{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;color:var(--text);font-family:'DM Mono',monospace;font-size:.75rem;resize:vertical;min-height:80px;}
   .paste-area:focus{outline:none;border-color:var(--accent);}
-  /* Entries list */
   .entries-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-top:16px;}
   .entry-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;position:relative;}
   .entry-card.valid{border-color:var(--green);}
-  .entry-card.invalid{border-color:var(--red);}
   .entry-name{font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px;color:var(--accent);}
   .entry-meta{font-size:.75rem;color:var(--muted);margin:4px 0 8px;}
   .entry-series{display:flex;flex-wrap:wrap;gap:6px;}
@@ -47,7 +45,6 @@
   .serie-slow{background:rgba(255,215,0,.15);color:var(--yellow);border:1px solid var(--yellow);}
   .btn-del{position:absolute;top:8px;right:8px;background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;line-height:1;}
   .btn-del:hover{color:var(--red);}
-  /* Table preview */
   .table-scroll{overflow-x:auto;margin-top:16px;}
   table.preview{border-collapse:collapse;width:100%;font-size:.75rem;font-family:'DM Mono',monospace;min-width:800px;}
   table.preview th{background:var(--surface2);color:var(--muted);padding:6px 10px;border:1px solid var(--border);font-size:.65rem;letter-spacing:1px;text-align:left;white-space:nowrap;}
@@ -56,7 +53,6 @@
   table.preview td.ok{color:var(--green);}
   table.preview td.fast{color:var(--red);}
   table.preview td.slow{color:var(--yellow);}
-  /* Buttons */
   .btn{padding:12px 28px;border-radius:8px;border:none;cursor:pointer;font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px;transition:all .2s;display:inline-flex;align-items:center;gap:8px;}
   .btn-primary{background:var(--accent);color:var(--bg);}
   .btn-primary:hover{background:#00c8e0;}
@@ -65,36 +61,28 @@
   .btn-danger{background:var(--red);color:#fff;}
   .btn:disabled{opacity:.4;cursor:not-allowed;}
   .actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:16px;}
-  /* Toast */
   .toast{position:fixed;bottom:24px;right:24px;background:var(--surface);border:1px solid var(--accent);border-radius:10px;padding:14px 20px;color:var(--text);font-size:.85rem;z-index:9999;transform:translateY(80px);opacity:0;transition:all .3s;}
   .toast.show{transform:translateY(0);opacity:1;}
   .toast.error{border-color:var(--red);}
-  /* Empty state */
   .empty{text-align:center;padding:40px;color:var(--muted);}
   .empty-icon{font-size:3rem;margin-bottom:12px;}
-  /* stats */
   .stats-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;}
   .stat-box{background:var(--surface2);border-radius:8px;padding:12px 18px;border:1px solid var(--border);text-align:center;min-width:100px;}
   .stat-val{font-family:'Bebas Neue',sans-serif;font-size:1.8rem;color:var(--accent);}
   .stat-lbl{font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;}
   hr{border:none;border-top:1px solid var(--border);margin:16px 0;}
-
-  /* ─── Scanner caméra ─── */
   .scanner-modal{position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s;}
   .scanner-modal.open{opacity:1;pointer-events:all;}
   .scanner-box{position:relative;width:min(400px,90vw);}
   .scanner-box video{width:100%;border-radius:var(--radius);display:block;background:#000;}
   .scanner-box canvas{display:none;}
-  /* Viseur animé */
   .scanner-viewfinder{position:absolute;inset:0;pointer-events:none;}
   .scanner-viewfinder::before,.scanner-viewfinder::after{content:'';position:absolute;width:40px;height:40px;border-color:var(--accent);border-style:solid;}
   .scanner-viewfinder::before{top:12%;left:12%;border-width:3px 0 0 3px;border-radius:4px 0 0 0;}
   .scanner-viewfinder::after{bottom:12%;right:12%;border-width:0 3px 3px 0;border-radius:0 0 4px 0;}
-  /* Coins supplémentaires via pseudo + sibling */
   .corner-tr,.corner-bl{position:absolute;width:40px;height:40px;border-color:var(--accent);border-style:solid;pointer-events:none;}
   .corner-tr{top:12%;right:12%;border-width:3px 3px 0 0;border-radius:0 4px 0 0;}
   .corner-bl{bottom:12%;left:12%;border-width:0 0 3px 3px;border-radius:0 0 0 4px;}
-  /* Ligne de scan animée */
   .scan-line{position:absolute;left:12%;right:12%;height:2px;background:linear-gradient(90deg,transparent,var(--accent),transparent);animation:scanline 2s ease-in-out infinite;top:50%;}
   @keyframes scanline{0%,100%{top:15%;}50%{top:80%;}}
   .scanner-status{margin-top:16px;font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px;color:var(--accent);text-align:center;min-height:1.5em;}
@@ -102,14 +90,11 @@
   .scanner-status.err{color:var(--red);}
   .scanner-counter{margin-top:8px;font-family:'DM Mono',monospace;font-size:.8rem;color:var(--muted);text-align:center;}
   .scanner-btns{display:flex;gap:12px;margin-top:20px;flex-wrap:wrap;justify-content:center;}
-  /* Sélecteur de caméra */
   .cam-select{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 14px;color:var(--text);font-family:'DM Mono',monospace;font-size:.8rem;width:100%;margin-top:12px;}
   .cam-select:focus{outline:none;border-color:var(--accent);}
-  /* Bouton scanner principal */
   .btn-scan{background:linear-gradient(135deg,var(--accent),#0099bb);color:var(--bg);font-size:1.2rem;padding:16px 32px;border-radius:10px;border:none;cursor:pointer;font-family:'Bebas Neue',sans-serif;letter-spacing:3px;display:flex;align-items:center;gap:10px;transition:transform .15s,box-shadow .15s;box-shadow:0 0 20px rgba(0,229,255,.3);}
   .btn-scan:hover{transform:translateY(-2px);box-shadow:0 0 30px rgba(0,229,255,.5);}
   .btn-scan svg{width:28px;height:28px;}
-  /* Flash succès */
   @keyframes flashGreen{0%{box-shadow:0 0 0 0 rgba(0,255,136,.8);}100%{box-shadow:0 0 0 30px rgba(0,255,136,0);}}
   .scanner-box.flash{animation:flashGreen .4s ease-out;}
 </style>
@@ -134,7 +119,7 @@
       <button onclick="stopScanner()" style="background:none;border:1px solid var(--border);border-radius:8px;color:var(--muted);padding:6px 14px;cursor:pointer;font-family:'Bebas Neue',sans-serif;letter-spacing:1px;font-size:.9rem;">✕ FERMER</button>
     </div>
 
-    <!-- Mode vidéo continu (Android/Chrome BarcodeDetector) -->
+    <!-- Mode vidéo continu -->
     <div id="modeVideo" style="display:none;">
       <div class="scanner-box" id="scannerBox">
         <video id="scannerVideo" autoplay muted playsinline></video>
@@ -149,19 +134,17 @@
       </div>
     </div>
 
-    <!-- Mode photo iOS (input capture) -->
+    <!-- Mode photo (iOS + fallback) -->
     <div id="modePhoto" style="display:none;">
       <div style="background:var(--surface2);border-radius:var(--radius);padding:24px;text-align:center;border:2px dashed var(--border);">
         <div style="font-size:3rem;margin-bottom:12px;">📸</div>
         <p style="color:var(--muted);font-size:.85rem;margin-bottom:20px;">
           Appuyez sur le bouton pour ouvrir l'appareil photo,<br>cadrez le QR code et prenez la photo.
         </p>
-        <!-- input invisible déclenché par le bouton -->
         <input type="file" accept="image/*" capture="environment" id="iosCapture" style="display:none;" onchange="handleIOSCapture(this)">
         <button class="btn btn-primary" onclick="document.getElementById('iosCapture').click()" style="font-size:1.1rem;padding:14px 28px;">
           📷 Ouvrir l'appareil photo
         </button>
-        <!-- Aperçu de l'image capturée -->
         <div id="capturePreview" style="margin-top:16px;display:none;">
           <img id="captureImg" style="max-width:100%;border-radius:8px;border:1px solid var(--border);">
           <div style="margin-top:10px;">
@@ -181,12 +164,8 @@
 </div>
 
 <main>
-
-  <!-- ─── Ajout données ─── -->
   <div class="card">
     <h2>📥 Réception des données</h2>
-
-    <!-- GRAND BOUTON SCANNER -->
     <div style="display:flex;justify-content:center;margin-bottom:24px;">
       <button class="btn-scan" onclick="startScanner()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -197,10 +176,7 @@
         SCANNER UN QR CODE
       </button>
     </div>
-
     <hr>
-
-    <!-- Zone URL (fallback) -->
     <div style="margin-bottom:16px;">
       <label style="font-size:.75rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:8px;">
         Ou coller l'URL du QR code manuellement
@@ -211,10 +187,7 @@
         <button class="btn btn-secondary" onclick="pasteFromClipboard()">📋 Coller presse-papier</button>
       </div>
     </div>
-
     <hr>
-
-    <!-- Drop zone CSV -->
     <div>
       <label style="font-size:.75rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:8px;">
         Ou importer des fichiers CSV exportés depuis la tablette
@@ -228,12 +201,9 @@
     </div>
   </div>
 
-  <!-- ─── Entrées reçues ─── -->
   <div class="card">
     <h2>👥 Élèves enregistrés</h2>
-    <div id="statsWrap" style="display:none;">
-      <div class="stats-row" id="statsRow"></div>
-    </div>
+    <div id="statsWrap" style="display:none;"><div class="stats-row" id="statsRow"></div></div>
     <div id="entriesContainer">
       <div class="empty"><div class="empty-icon">🏃</div><p>Aucun élève enregistré.<br>Scannez les QR codes ou importez les CSV.</p></div>
     </div>
@@ -242,13 +212,11 @@
     </div>
   </div>
 
-  <!-- ─── Aperçu tableau ─── -->
   <div class="card" id="previewCard" style="display:none;">
     <h2>📊 Aperçu du tableau</h2>
     <div class="table-scroll"><div id="tablePreview"></div></div>
   </div>
 
-  <!-- ─── Export ─── -->
   <div class="card" id="exportCard" style="display:none;">
     <h2>⬇ Export Excel</h2>
     <p style="color:var(--muted);font-size:.85rem;margin-bottom:16px;">
@@ -256,18 +224,17 @@
     </p>
     <div id="sheetsList" style="margin-bottom:16px;display:flex;flex-wrap:wrap;gap:8px;"></div>
     <div class="actions">
-      <button class="btn btn-primary" id="btnExport" onclick="exportExcel()">⬇ Télécharger Excel (.xlsx)</button>
+      <button class="btn btn-primary" onclick="exportExcel()">⬇ Télécharger Excel (.xlsx)</button>
       <button class="btn btn-secondary" onclick="exportCSVAll()">⬇ Télécharger CSV (toutes séances)</button>
     </div>
   </div>
-
 </main>
 
 <script>
 // ════════════════════════════════════════════════════════
 //  STATE
 // ════════════════════════════════════════════════════════
-let entries = []; // [{id, runner:{name,vma,series:[{...}]}, seance, classe, date, distPlots, distPiste, series}]
+let entries = [];
 
 function toast(msg, isError=false){
   const t=document.getElementById('toast');
@@ -284,14 +251,14 @@ function parseFromURL(){
   if(!raw){toast('Aucune URL saisie',true);return;}
   let dataStr='';
   try{
-    // Extraire le paramètre ?d= de l'URL ou utiliser directement
     if(raw.includes('?d=')){
-      const u=new URL(raw.startsWith('http')?raw:'http://x/'+raw.split('?')[0].replace(/^[^?]*/,'')+raw.slice(raw.indexOf('?')));
-      dataStr=u.searchParams.get('d')||'';
+      const qIdx=raw.indexOf('?');
+      const params=new URLSearchParams(raw.slice(qIdx+1));
+      dataStr=params.get('d')||'';
     } else if(raw.includes('d=')){
       dataStr=raw.split('d=')[1].split('&')[0];
     } else {
-      dataStr=raw; // peut-être directement la chaîne compressée
+      dataStr=raw;
     }
     if(!dataStr) throw new Error('Paramètre d= introuvable');
     addFromCompressed(dataStr);
@@ -323,13 +290,11 @@ async function pasteFromClipboard(){
   }
 }
 
-// Lecture depuis l'URL de la page au chargement
 function checkURLOnLoad(){
   const params=new URLSearchParams(window.location.search);
   const d=params.get('d');
   if(d){
     addFromCompressed(d);
-    // Nettoyer l'URL sans recharger
     window.history.replaceState({},'',window.location.pathname);
   }
 }
@@ -352,56 +317,37 @@ function handleFiles(files){
 }
 
 function parseCSV(text,filename){
-  // Supprimer BOM UTF-8
   if(text.charCodeAt(0)===0xFEFF)text=text.slice(1);
   const rows=text.split('\n').map(l=>l.split(',').map(c=>c.replace(/^"|"$/g,'').replace(/""/g,'"').trim()));
-
   let seance='',classe='',date='',distPlots=25,distPiste=400;
-  // Ligne 0 : infos séance
   if(rows[0]){
     seance=rows[0][1]||'';classe=rows[0][3]||'';date=rows[0][5]||'';
     distPiste=parseInt(rows[0][7])||400;distPlots=parseInt(rows[0][9])||25;
   }
-
   let r=2;
   while(r<rows.length){
     const row=rows[r];
     if(!row||!row[0])break;
     const name=row[0],vma=parseFloat(row[1])||0;
     if(!name||!vma){r++;continue;}
-
     const runnerData={name,vma,series:[]};
-    r++;
-    // Ligne d'en-têtes
-    r++;
-    // Lignes de séries
+    r++;r++;
     while(r<rows.length&&rows[r][0]&&rows[r][0].startsWith('S')){
       const sr=rows[r];
       runnerData.series.push({
-        idx:runnerData.series.length,
-        dureeMs:durStrToMs(sr[1]),
-        nbCols:0,
-        cible:parseFloat(sr[2])||0,
-        pctVma:parseInt(sr[3])||0,
-        passages:parseInt(sr[4])||0,
-        dist:parseInt(sr[5])||0,
-        vitMoy:parseFloat(sr[6])||0,
-        ecart:parseFloat(sr[7])||0,
-        zone:sr[8]==='OUI',
-        marches:parseInt(sr[9])||0
+        idx:runnerData.series.length,dureeMs:durStrToMs(sr[1]),nbCols:0,
+        cible:parseFloat(sr[2])||0,pctVma:parseInt(sr[3])||0,
+        passages:parseInt(sr[4])||0,dist:parseInt(sr[5])||0,
+        vitMoy:parseFloat(sr[6])||0,ecart:parseFloat(sr[7])||0,
+        zone:sr[8]==='OUI',marches:parseInt(sr[9])||0
       });
       r++;
     }
-    // Sauter jusqu'à la prochaine ligne vide ou nouveau coureur
     while(r<rows.length&&rows[r][0]!==''&&!rows[r][0].match(/^[A-Z]/))r++;
     r++;
-
-    const payload={
-      seance,classe,date,distPlots,distPiste,
+    addEntry({seance,classe,date,distPlots,distPiste,
       series:runnerData.series.map(s=>({dureeMs:s.dureeMs,nbCols:s.nbCols})),
-      runner:runnerData
-    };
-    addEntry(payload);
+      runner:runnerData});
   }
 }
 
@@ -415,44 +361,29 @@ function durStrToMs(str){
 //  GESTION ENTRÉES
 // ════════════════════════════════════════════════════════
 function addEntry(data){
-  // Dédoublonnage : même nom + même séance + même date
   const key=`${data.runner.name}|${data.seance}|${data.date}`;
-  const exists=entries.find(e=>e.key===key);
-  if(exists){
+  if(entries.find(e=>e.key===key)){
     toast(`⚠ ${data.runner.name} déjà présent pour cette séance — ignoré`,true);
     return;
   }
   entries.push({
-    id:Date.now()+Math.random(),
-    key,
-    runner:data.runner,
-    seance:data.seance||'—',
-    classe:data.classe||'—',
-    date:data.date||'—',
-    distPlots:data.distPlots||25,
-    distPiste:data.distPiste||400,
+    id:Date.now()+Math.random(),key,
+    runner:data.runner,seance:data.seance||'—',classe:data.classe||'—',
+    date:data.date||'—',distPlots:data.distPlots||25,distPiste:data.distPiste||400,
     series:data.series||[]
   });
   toast(`✓ ${data.runner.name} ajouté (${data.seance})`, false);
   render();
 }
 
-function removeEntry(id){
-  entries=entries.filter(e=>e.id!==id);
-  render();
-}
-
-function clearAll(){
-  if(!confirm('Effacer toutes les entrées ?'))return;
-  entries=[];render();
-}
+function removeEntry(id){entries=entries.filter(e=>e.id!==id);render();}
+function clearAll(){if(!confirm('Effacer toutes les entrées ?'))return;entries=[];render();}
 
 // ════════════════════════════════════════════════════════
 //  RENDU
 // ════════════════════════════════════════════════════════
 function render(){
   document.getElementById('countBadge').textContent=entries.length;
-
   const container=document.getElementById('entriesContainer');
   const statsWrap=document.getElementById('statsWrap');
   const clearActions=document.getElementById('clearActions');
@@ -466,12 +397,9 @@ function render(){
     return;
   }
 
-  statsWrap.style.display='block';
-  clearActions.style.display='flex';
-  previewCard.style.display='block';
-  exportCard.style.display='block';
+  statsWrap.style.display='block';clearActions.style.display='flex';
+  previewCard.style.display='block';exportCard.style.display='block';
 
-  // Stats
   const seances=[...new Set(entries.map(e=>e.seance))];
   const classes=[...new Set(entries.map(e=>e.classe))];
   const zoneOk=entries.reduce((n,e)=>n+e.runner.series.filter(s=>s.zone).length,0);
@@ -483,29 +411,23 @@ function render(){
     <div class="stat-box"><div class="stat-val">${classes.length}</div><div class="stat-lbl">Classe(s)</div></div>
     <div class="stat-box"><div class="stat-val" style="color:var(--green)">${zoneTotal>0?Math.round(zoneOk/zoneTotal*100):0}%</div><div class="stat-lbl">Séries dans la zone</div></div>`;
 
-  // Cartes élèves
-  const grid=document.createElement('div');
-  grid.className='entries-grid';
+  const grid=document.createElement('div');grid.className='entries-grid';
   entries.forEach(e=>{
-    const card=document.createElement('div');
-    card.className='entry-card valid';
-    const seriesBadges=e.runner.series.map((s,i)=>{
+    const card=document.createElement('div');card.className='entry-card valid';
+    const badges=e.runner.series.map((s,i)=>{
       const cls=s.zone?'serie-ok':s.ecart>0.5?'serie-fast':'serie-slow';
       const icon=s.zone?'✓':s.ecart>0.5?'⚡':'🐢';
       return `<span class="serie-badge ${cls}">S${i+1} ${s.vitMoy.toFixed(1)} km/h ${icon}</span>`;
     }).join('');
-    card.innerHTML=`
-      <button class="btn-del" onclick="removeEntry(${e.id})">✕</button>
+    card.innerHTML=`<button class="btn-del" onclick="removeEntry(${e.id})">✕</button>
       <div class="entry-name">${e.runner.name}</div>
       <div class="entry-meta">${e.seance} · ${e.classe} · ${e.date} · VMA ${e.runner.vma} km/h</div>
-      <div class="entry-series">${seriesBadges}</div>`;
+      <div class="entry-series">${badges}</div>`;
     grid.appendChild(card);
   });
   container.innerHTML='';container.appendChild(grid);
 
-  // Onglets à créer
-  const sheetsList=document.getElementById('sheetsList');
-  sheetsList.innerHTML='';
+  const sheetsList=document.getElementById('sheetsList');sheetsList.innerHTML='';
   seances.forEach(s=>{
     const cnt=entries.filter(e=>e.seance===s).length;
     const pill=document.createElement('span');
@@ -513,7 +435,6 @@ function render(){
     pill.textContent=`${s} (${cnt} élèves)`;
     sheetsList.appendChild(pill);
   });
-
   renderPreview();
 }
 
@@ -521,29 +442,22 @@ function renderPreview(){
   const seances=[...new Set(entries.map(e=>e.seance))];
   let html='';
   seances.forEach(seance=>{
-    const seanceEntries=entries.filter(e=>e.seance===seance);
-    if(!seanceEntries.length)return;
-    const maxSeries=Math.max(...seanceEntries.map(e=>e.runner.series.length));
-
-    html+=`<div style="margin-bottom:24px;">
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:2px;color:var(--accent);margin-bottom:8px;">${seance}</div>`;
-    html+='<table class="preview"><thead><tr>';
-    html+='<th>Élève</th><th>Classe</th><th>Date</th><th>VMA</th>';
-    for(let s=0;s<maxSeries;s++){
-      html+=`<th>S${s+1} — Cible</th><th>S${s+1} — Vit.moy</th><th>S${s+1} — Écart</th><th>S${s+1} — Zone</th><th>S${s+1} — Marches</th>`;
-    }
+    const se=entries.filter(e=>e.seance===seance);
+    if(!se.length)return;
+    const maxS=Math.max(...se.map(e=>e.runner.series.length));
+    html+=`<div style="margin-bottom:24px;"><div style="font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:2px;color:var(--accent);margin-bottom:8px;">${seance}</div>`;
+    html+='<table class="preview"><thead><tr><th>Élève</th><th>Classe</th><th>Date</th><th>VMA</th>';
+    for(let s=0;s<maxS;s++) html+=`<th>S${s+1} — Cible</th><th>S${s+1} — Vit.moy</th><th>S${s+1} — Écart</th><th>S${s+1} — Zone</th><th>S${s+1} — Marches</th>`;
     html+='</tr></thead><tbody>';
-    seanceEntries.forEach(e=>{
+    se.forEach(e=>{
       html+=`<tr><td>${e.runner.name}</td><td>${e.classe}</td><td>${e.date}</td><td>${e.runner.vma}</td>`;
-      for(let s=0;s<maxSeries;s++){
+      for(let s=0;s<maxS;s++){
         const sr=e.runner.series[s];
         if(sr){
           const cls=sr.zone?'ok':sr.ecart>0.5?'fast':'slow';
-          const zoneLabel=sr.zone?'✓ OUI':sr.ecart>0.5?'⚡ RAPIDE':'🐢 LENT';
-          html+=`<td>${sr.cible} km/h (${sr.pctVma}%)</td><td class="${cls}">${sr.vitMoy.toFixed(1)} km/h</td><td class="${cls}">${sr.ecart>=0?'+':''}${sr.ecart.toFixed(1)}</td><td class="${cls}">${zoneLabel}</td><td>${sr.marches>0?'🚶 '+sr.marches:'—'}</td>`;
-        } else {
-          html+='<td>—</td><td>—</td><td>—</td><td>—</td><td>—</td>';
-        }
+          const zl=sr.zone?'✓ OUI':sr.ecart>0.5?'⚡ RAPIDE':'🐢 LENT';
+          html+=`<td>${sr.cible} km/h (${sr.pctVma}%)</td><td class="${cls}">${sr.vitMoy.toFixed(1)} km/h</td><td class="${cls}">${sr.ecart>=0?'+':''}${sr.ecart.toFixed(1)}</td><td class="${cls}">${zl}</td><td>${sr.marches>0?'🚶 '+sr.marches:'—'}</td>`;
+        } else html+='<td>—</td><td>—</td><td>—</td><td>—</td><td>—</td>';
       }
       html+='</tr>';
     });
@@ -559,90 +473,46 @@ function exportExcel(){
   if(!entries.length){toast('Aucune donnée à exporter',true);return;}
   const wb=XLSX.utils.book_new();
   const seances=[...new Set(entries.map(e=>e.seance))];
-
   seances.forEach(seance=>{
-    const seanceEntries=entries.filter(e=>e.seance===seance);
-    const maxSeries=Math.max(...seanceEntries.map(e=>e.runner.series.length));
-
-    // En-têtes
+    const se=entries.filter(e=>e.seance===seance);
+    const maxS=Math.max(...se.map(e=>e.runner.series.length));
     const headers=['Élève','Classe','Date','VMA (km/h)'];
-    for(let s=0;s<maxSeries;s++){
-      headers.push(
-        `S${s+1} Durée`,
-        `S${s+1} Cible (km/h)`,
-        `S${s+1} %VMA`,
-        `S${s+1} Plots`,
-        `S${s+1} Distance (m)`,
-        `S${s+1} Vit.moy (km/h)`,
-        `S${s+1} Écart (km/h)`,
-        `S${s+1} Zone`,
-        `S${s+1} Marches`
-      );
-    }
-
+    for(let s=0;s<maxS;s++) headers.push(`S${s+1} Durée`,`S${s+1} Cible (km/h)`,`S${s+1} %VMA`,`S${s+1} Plots`,`S${s+1} Distance (m)`,`S${s+1} Vit.moy (km/h)`,`S${s+1} Écart (km/h)`,`S${s+1} Zone`,`S${s+1} Marches`);
     const aoa=[headers];
-
-    seanceEntries.forEach(e=>{
+    se.forEach(e=>{
       const row=[e.runner.name,e.classe,e.date,e.runner.vma];
-      for(let s=0;s<maxSeries;s++){
+      for(let s=0;s<maxS;s++){
         const sr=e.runner.series[s];
-        if(sr){
-          row.push(
-            msToDurStr(sr.dureeMs),
-            sr.cible,
-            sr.pctVma,
-            sr.passages,
-            sr.dist,
-            parseFloat(sr.vitMoy.toFixed(2)),
-            parseFloat(sr.ecart.toFixed(2)),
-            sr.zone?'OUI':sr.ecart>0.5?'RAPIDE':'LENT',
-            sr.marches
-          );
-        } else {
-          row.push('','','','','','','','','');
-        }
+        if(sr) row.push(msToDurStr(sr.dureeMs),sr.cible,sr.pctVma,sr.passages,sr.dist,parseFloat(sr.vitMoy.toFixed(2)),parseFloat(sr.ecart.toFixed(2)),sr.zone?'OUI':sr.ecart>0.5?'RAPIDE':'LENT',sr.marches);
+        else row.push('','','','','','','','','');
       }
       aoa.push(row);
     });
-
-    // Ligne de moyennes
-    if(seanceEntries.length>1){
+    if(se.length>1){
       const meanRow=['MOYENNE CLASSE','','',''];
-      for(let s=0;s<maxSeries;s++){
-        const srs=seanceEntries.map(e=>e.runner.series[s]).filter(Boolean);
-        const avgVit=srs.length?srs.reduce((a,b)=>a+b.vitMoy,0)/srs.length:0;
-        const avgEcart=srs.length?srs.reduce((a,b)=>a+b.ecart,0)/srs.length:0;
-        const pctZone=srs.length?Math.round(srs.filter(s=>s.zone).length/srs.length*100):0;
-        meanRow.push('',srs[0]?.cible||'','',srs.length>0?srs.reduce((a,b)=>a+b.passages,0):'','',
-          parseFloat(avgVit.toFixed(2)),parseFloat(avgEcart.toFixed(2)),`${pctZone}% dans zone`,'');
+      for(let s=0;s<maxS;s++){
+        const srs=se.map(e=>e.runner.series[s]).filter(Boolean);
+        const avgV=srs.length?srs.reduce((a,b)=>a+b.vitMoy,0)/srs.length:0;
+        const avgE=srs.length?srs.reduce((a,b)=>a+b.ecart,0)/srs.length:0;
+        const pctZ=srs.length?Math.round(srs.filter(s=>s.zone).length/srs.length*100):0;
+        meanRow.push('',srs[0]?.cible||'','',srs.length>0?srs.reduce((a,b)=>a+b.passages,0):'','',parseFloat(avgV.toFixed(2)),parseFloat(avgE.toFixed(2)),`${pctZ}% dans zone`,'');
       }
       aoa.push([]);aoa.push(meanRow);
     }
-
     const ws=XLSX.utils.aoa_to_sheet(aoa);
-
-    // Largeurs colonnes
-    const colWidths=[{wch:20},{wch:12},{wch:12},{wch:10}];
-    for(let s=0;s<maxSeries;s++) colWidths.push({wch:8},{wch:12},{wch:8},{wch:7},{wch:12},{wch:14},{wch:12},{wch:10},{wch:9});
-    ws['!cols']=colWidths;
-
-    // Gel de la première ligne
-    ws['!freeze']={xSplit:0,ySplit:1};
-
-    // Nom d'onglet sécurisé (max 31 chars, pas de caractères spéciaux)
-    const sheetName=seance.replace(/[/\\?*\[\]]/g,'').slice(0,31)||'Séance';
-    XLSX.utils.book_append_sheet(wb,ws,sheetName);
+    const cw=[{wch:20},{wch:12},{wch:12},{wch:10}];
+    for(let s=0;s<maxS;s++) cw.push({wch:8},{wch:12},{wch:8},{wch:7},{wch:12},{wch:14},{wch:12},{wch:10},{wch:9});
+    ws['!cols']=cw;
+    const sn=seance.replace(/[/\\?*\[\]]/g,'').slice(0,31)||'Séance';
+    XLSX.utils.book_append_sheet(wb,ws,sn);
   });
-
-  // Onglet récap global si plusieurs séances
   if(seances.length>1){
     const aoa=[['Récapitulatif toutes séances'],[]];
     aoa.push(['Élève','Classe','VMA',...seances.flatMap(s=>[s+' — Vit.moy S1',s+' — Zone S1'])]);
-    const allNames=[...new Set(entries.map(e=>e.runner.name))];
-    allNames.forEach(name=>{
+    [...new Set(entries.map(e=>e.runner.name))].forEach(name=>{
       const row=[name];
-      const firstEntry=entries.find(e=>e.runner.name===name);
-      row.push(firstEntry?.classe||'',firstEntry?.runner.vma||'');
+      const fe=entries.find(e=>e.runner.name===name);
+      row.push(fe?.classe||'',fe?.runner.vma||'');
       seances.forEach(seance=>{
         const entry=entries.find(e=>e.runner.name===name&&e.seance===seance);
         const sr=entry?.runner.series[0];
@@ -654,27 +524,24 @@ function exportExcel(){
     ws['!cols']=[{wch:20},{wch:12},{wch:8},...seances.flatMap(()=>[{wch:14},{wch:8}])];
     XLSX.utils.book_append_sheet(wb,ws,'Récap');
   }
-
-  const filename=`VMA_Bilan_${entries[0]?.classe||'classe'}_${new Date().toISOString().slice(0,10)}.xlsx`;
-  XLSX.writeFile(wb,filename);
-  toast('✓ Excel téléchargé : '+filename);
+  const fn=`VMA_Bilan_${entries[0]?.classe||'classe'}_${new Date().toISOString().slice(0,10)}.xlsx`;
+  XLSX.writeFile(wb,fn);
+  toast('✓ Excel téléchargé : '+fn);
 }
 
-// Export CSV global
 function exportCSVAll(){
   if(!entries.length){toast('Aucune donnée',true);return;}
   const seances=[...new Set(entries.map(e=>e.seance))];
   let csv='\uFEFF';
   seances.forEach(seance=>{
-    const seanceEntries=entries.filter(e=>e.seance===seance);
-    const maxSeries=Math.max(...seanceEntries.map(e=>e.runner.series.length));
+    const se=entries.filter(e=>e.seance===seance);
+    const maxS=Math.max(...se.map(e=>e.runner.series.length));
     const headers=['Élève','Classe','Date','VMA'];
-    for(let s=0;s<maxSeries;s++) headers.push(`S${s+1}_Cible`,`S${s+1}_VitMoy`,`S${s+1}_Ecart`,`S${s+1}_Zone`,`S${s+1}_Marches`);
-    csv+=`\n=== ${seance} ===\n`;
-    csv+=headers.join(',')+'\n';
-    seanceEntries.forEach(e=>{
+    for(let s=0;s<maxS;s++) headers.push(`S${s+1}_Cible`,`S${s+1}_VitMoy`,`S${s+1}_Ecart`,`S${s+1}_Zone`,`S${s+1}_Marches`);
+    csv+=`\n=== ${seance} ===\n`+headers.join(',')+'\n';
+    se.forEach(e=>{
       const row=[e.runner.name,e.classe,e.date,e.runner.vma];
-      for(let s=0;s<maxSeries;s++){
+      for(let s=0;s<maxS;s++){
         const sr=e.runner.series[s];
         if(sr) row.push(sr.cible,sr.vitMoy.toFixed(2),sr.ecart.toFixed(2),sr.zone?'OUI':'NON',sr.marches);
         else row.push('','','','','');
@@ -688,568 +555,245 @@ function exportCSVAll(){
   toast('✓ CSV téléchargé');
 }
 
-function msToDurStr(ms){
-  const t=Math.floor(ms/1000),m=Math.floor(t/60),s=t%60;
-  return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
-}
+function msToDurStr(ms){const t=Math.floor(ms/1000),m=Math.floor(t/60),s=t%60;return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');}
 
 // ════════════════════════════════════════════════════════
-//  SCANNER — Hybride iOS (input capture) / Android (BarcodeDetector)
+//  SCANNER — jsQR (fiable) + BarcodeDetector (natif)
 // ════════════════════════════════════════════════════════
-let scannerStream   = null;
-let scannerRAF      = null;
-let torchOn         = false;
-let lastScanned     = '';
-let scanCount       = 0;
-let scannerActive   = false;
-let barcodeDetector = null;
+let scannerStream=null, scannerRAF=null, torchOn=false;
+let lastScanned='', scanCount=0, scannerActive=false;
 
-// Détection iOS
-const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-              (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||
+            (navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 
 async function startScanner(){
   document.getElementById('scannerModal').classList.add('open');
-  setStatus('Initialisation…', '');
-  scannerActive = true;
-  scanCount = 0;
-  lastScanned = '';
-  document.getElementById('scannerCounter').textContent = '';
+  setStatus('Initialisation…','');
+  scannerActive=true; scanCount=0; lastScanned='';
+  document.getElementById('scannerCounter').textContent='';
 
   if(isIOS){
-    // ── Mode iOS : input[capture] ──
-    document.getElementById('modePhoto').style.display = 'block';
-    document.getElementById('modeVideo').style.display = 'none';
-    document.getElementById('capturePreview').style.display = 'none';
-    // Réinitialiser l'input pour permettre de choisir la même photo
-    const inp = document.getElementById('iosCapture');
-    inp.value = '';
-    setStatus('Appuyez sur le bouton pour scanner', '');
+    document.getElementById('modePhoto').style.display='block';
+    document.getElementById('modeVideo').style.display='none';
+    document.getElementById('capturePreview').style.display='none';
+    document.getElementById('iosCapture').value='';
+    setStatus('Appuyez sur le bouton pour scanner','');
   } else {
-    // ── Mode vidéo : BarcodeDetector en continu ──
-    document.getElementById('modeVideo').style.display = 'block';
-    document.getElementById('modePhoto').style.display = 'none';
-
-    if(typeof BarcodeDetector !== 'undefined'){
-      try {
-        const formats = await BarcodeDetector.getSupportedFormats();
-        if(formats.includes('qr_code'))
-          barcodeDetector = new BarcodeDetector({ formats:['qr_code'] });
-      } catch(e){ barcodeDetector = null; }
-    }
-
-    try {
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const cams = devices.filter(d => d.kind === 'videoinput');
-      const sel = document.getElementById('camSelect');
-      if(cams.length > 1){
-        sel.style.display = 'block';
-        sel.innerHTML = cams.map((c,i) =>
-          `<option value="${c.deviceId}">${c.label || 'Caméra '+(i+1)}</option>`
-        ).join('');
-        const backIdx = cams.findIndex(c => /back|rear|environment/i.test(c.label));
-        if(backIdx >= 0) sel.selectedIndex = backIdx;
+    document.getElementById('modeVideo').style.display='block';
+    document.getElementById('modePhoto').style.display='none';
+    try{
+      const devices=await navigator.mediaDevices.enumerateDevices();
+      const cams=devices.filter(d=>d.kind==='videoinput');
+      const sel=document.getElementById('camSelect');
+      if(cams.length>1){
+        sel.style.display='block';
+        sel.innerHTML=cams.map((c,i)=>`<option value="${c.deviceId}">${c.label||'Caméra '+(i+1)}</option>`).join('');
+        const bi=cams.findIndex(c=>/back|rear|environment/i.test(c.label));
+        if(bi>=0) sel.selectedIndex=bi;
       }
-      await openCamera(cams.length > 1 ? sel.value : undefined);
+      await openCamera(cams.length>1?sel.value:undefined);
     } catch(e){
-      setStatus('Accès caméra refusé : '+e.message, 'err');
+      setStatus('Accès caméra refusé : '+e.message,'err');
     }
   }
 }
 
-// ── Caméra vidéo (Android/Chrome) ──
 async function openCamera(deviceId){
-  if(scannerStream){ scannerStream.getTracks().forEach(t=>t.stop()); scannerStream=null; }
+  if(scannerStream){scannerStream.getTracks().forEach(t=>t.stop());scannerStream=null;}
   cancelAnimationFrame(scannerRAF);
-
-  const constraints = { video: deviceId
-    ? { deviceId:{exact:deviceId}, facingMode:{ideal:'environment'}, width:{ideal:1280}, height:{ideal:720} }
-    : { facingMode:{ideal:'environment'}, width:{ideal:1280}, height:{ideal:720} }
-  };
-
-  try {
-    scannerStream = await navigator.mediaDevices.getUserMedia(constraints);
-    const video = document.getElementById('scannerVideo');
-    video.srcObject = scannerStream;
+  const constraints={video:deviceId
+    ?{deviceId:{exact:deviceId},facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}}
+    :{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}}};
+  try{
+    scannerStream=await navigator.mediaDevices.getUserMedia(constraints);
+    const video=document.getElementById('scannerVideo');
+    video.srcObject=scannerStream;
     await video.play();
-
-    const track = scannerStream.getVideoTracks()[0];
-    const caps = track.getCapabilities ? track.getCapabilities() : {};
-    document.getElementById('btnTorch').style.display = caps.torch ? 'inline-flex' : 'none';
-
-    if(barcodeDetector){
-      setStatus('Pointez vers un QR code — détection auto', '');
-      scannerRAF = requestAnimationFrame(scanFrameBarcode);
-    } else {
-      setStatus('Caméra active — BarcodeDetector non supporté', 'err');
-    }
+    const track=scannerStream.getVideoTracks()[0];
+    const caps=track.getCapabilities?track.getCapabilities():{};
+    document.getElementById('btnTorch').style.display=caps.torch?'inline-flex':'none';
+    setStatus('Pointez vers un QR code — détection auto','');
+    scannerRAF=requestAnimationFrame(scanFrameLoop);
   } catch(e){
-    setStatus('Erreur caméra : '+e.message, 'err');
+    setStatus('Erreur caméra : '+e.message,'err');
   }
 }
 
-async function switchCamera(deviceId){
+async function switchCamera(deviceId){if(scannerActive) await openCamera(deviceId);}
+
+// ═══ Boucle de scan vidéo : jsQR + BarcodeDetector ═══
+async function scanFrameLoop(){
   if(!scannerActive) return;
-  await openCamera(deviceId);
-}
+  const video=document.getElementById('scannerVideo');
+  if(video.readyState===video.HAVE_ENOUGH_DATA){
+    const canvas=document.getElementById('scannerCanvas');
+    canvas.width=video.videoWidth;
+    canvas.height=video.videoHeight;
+    const ctx=canvas.getContext('2d',{willReadFrequently:true});
+    ctx.drawImage(video,0,0);
 
-async function scanFrameBarcode(){
-  if(!scannerActive || !barcodeDetector) return;
-  const video = document.getElementById('scannerVideo');
-  if(video.readyState === video.HAVE_ENOUGH_DATA){
-    try {
-      const codes = await barcodeDetector.detect(video);
-      if(codes.length > 0 && codes[0].rawValue !== lastScanned){
-        lastScanned = codes[0].rawValue;
-        handleScannedCode(codes[0].rawValue);
-        setTimeout(() => { lastScanned = ''; }, 3000);
-      }
-    } catch(e){}
+    let decoded=null;
+
+    // Stratégie 1 : jsQR (fonctionne partout)
+    if(typeof jsQR!=='undefined'){
+      const imageData=ctx.getImageData(0,0,canvas.width,canvas.height);
+      const code=jsQR(imageData.data,canvas.width,canvas.height,{inversionAttempts:'dontInvert'});
+      if(code&&code.data) decoded=code.data;
+    }
+
+    // Stratégie 2 : BarcodeDetector natif (si dispo et jsQR n'a rien trouvé)
+    if(!decoded&&typeof BarcodeDetector!=='undefined'){
+      try{
+        const det=new BarcodeDetector({formats:['qr_code']});
+        const codes=await det.detect(video);
+        if(codes.length>0) decoded=codes[0].rawValue;
+      } catch(e){}
+    }
+
+    if(decoded&&decoded!==lastScanned){
+      lastScanned=decoded;
+      handleScannedCode(decoded);
+      setTimeout(()=>{lastScanned='';},3000);
+    }
   }
-  scannerRAF = requestAnimationFrame(scanFrameBarcode);
+  scannerRAF=requestAnimationFrame(scanFrameLoop);
 }
 
-// ── iOS : traitement de l'image capturée ──
+// ═══ iOS : traitement photo ═══
 function handleIOSCapture(input){
-  const file = input.files[0];
+  const file=input.files[0];
   if(!file) return;
-  setStatus('Analyse du QR code…', '');
-
-  const reader = new FileReader();
-  reader.onload = e => {
-    const img = new Image();
-    img.onload = () => {
-      // Afficher l'aperçu
-      document.getElementById('captureImg').src = e.target.result;
-      document.getElementById('capturePreview').style.display = 'block';
-
-      // Dessiner sur canvas et analyser
-      const canvas = document.getElementById('scannerCanvasIOS');
-      // Réduire si trop grande (performance)
-      const MAX = 1024;
-      const scale = Math.min(MAX / img.width, MAX / img.height, 1);
-      canvas.width  = img.width  * scale;
-      canvas.height = img.height * scale;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
+  setStatus('Analyse du QR code…','');
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const img=new Image();
+    img.onload=()=>{
+      document.getElementById('captureImg').src=e.target.result;
+      document.getElementById('capturePreview').style.display='block';
+      const canvas=document.getElementById('scannerCanvasIOS');
+      const MAX=1280;
+      const scale=Math.min(MAX/img.width,MAX/img.height,1);
+      canvas.width=img.width*scale;
+      canvas.height=img.height*scale;
+      const ctx=canvas.getContext('2d',{willReadFrequently:true});
+      ctx.drawImage(img,0,0,canvas.width,canvas.height);
       decodeCanvasIOS(canvas);
     };
-    img.src = e.target.result;
+    img.src=e.target.result;
   };
   reader.readAsDataURL(file);
 }
 
 async function decodeCanvasIOS(canvas){
-  // Stratégie 1 : BarcodeDetector sur l'image (parfois dispo sur iOS 17+)
-  if(typeof BarcodeDetector !== 'undefined'){
-    try {
-      const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.92));
-      const bmp  = await createImageBitmap(blob);
-      const det  = new BarcodeDetector({ formats:['qr_code'] });
-      const codes = await det.detect(bmp);
-      if(codes.length > 0){
-        handleScannedCode(codes[0].rawValue);
-        return;
-      }
-    } catch(e){ console.warn('BarcodeDetector image fail:', e); }
+  const ctx=canvas.getContext('2d',{willReadFrequently:true});
+  let decoded=null;
+
+  // Stratégie 1 : jsQR (fiable, fonctionne sur tous les navigateurs)
+  if(typeof jsQR!=='undefined'){
+    const imageData=ctx.getImageData(0,0,canvas.width,canvas.height);
+    const code=jsQR(imageData.data,canvas.width,canvas.height,{inversionAttempts:'attemptBoth'});
+    if(code&&code.data) decoded=code.data;
   }
 
-  // Stratégie 2 : décodage QR maison via pixels canvas
-  try {
-    const ctx = canvas.getContext('2d');
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const result = decodeQRFromImageData(imageData);
-    if(result){
-      handleScannedCode(result);
-      return;
-    }
-  } catch(e){ console.warn('QR manual decode fail:', e); }
-
-  setStatus('QR non détecté — repositionnez et réessayez', 'err');
-}
-
-// ── Décodeur QR maison minimal (Pure JS, sans lib) ──
-// Implémentation Reed-Solomon + finder patterns pour QR codes standards
-function decodeQRFromImageData(imageData){
-  const { data, width, height } = imageData;
-
-  // Convertir en grille binaire (binarisation adaptative)
-  const gray = new Uint8Array(width * height);
-  for(let i = 0; i < width * height; i++){
-    const r = data[i*4], g = data[i*4+1], b = data[i*4+2];
-    gray[i] = Math.round(0.299*r + 0.587*g + 0.114*b);
+  // Stratégie 2 : BarcodeDetector natif (iOS 17+, Chrome)
+  if(!decoded&&typeof BarcodeDetector!=='undefined'){
+    try{
+      const blob=await new Promise(r=>canvas.toBlob(r,'image/jpeg',0.92));
+      const bmp=await createImageBitmap(blob);
+      const det=new BarcodeDetector({formats:['qr_code']});
+      const codes=await det.detect(bmp);
+      if(codes.length>0) decoded=codes[0].rawValue;
+    } catch(e){console.warn('BarcodeDetector fail:',e);}
   }
 
-  // Seuillage adaptatif par bloc
-  const blockSize = Math.max(8, Math.floor(Math.min(width, height) / 20));
-  const binary = new Uint8Array(width * height);
-  for(let y = 0; y < height; y++){
-    for(let x = 0; x < width; x++){
-      let sum = 0, cnt = 0;
-      const x0 = Math.max(0, x - blockSize), x1 = Math.min(width-1, x + blockSize);
-      const y0 = Math.max(0, y - blockSize), y1 = Math.min(height-1, y + blockSize);
-      for(let yy = y0; yy <= y1; yy += 2)
-        for(let xx = x0; xx <= x1; xx += 2){ sum += gray[yy*width+xx]; cnt++; }
-      binary[y*width+x] = gray[y*width+x] < (sum/cnt) - 10 ? 1 : 0;
-    }
+  if(decoded){
+    handleScannedCode(decoded);
+  } else {
+    setStatus('QR non détecté — réessayez en cadrant bien le QR code','err');
   }
-
-  // Chercher les 3 finder patterns (carré 7x7 avec ratio 1:1:3:1:1)
-  const finders = findFinderPatterns(binary, width, height);
-  if(finders.length < 3) return null;
-
-  // Extraire et décoder le QR
-  return extractAndDecode(binary, width, height, finders);
 }
 
-function findFinderPatterns(binary, width, height){
-  const patterns = [];
-  const MIN_MODULE = 3;
-
-  for(let y = 7; y < height - 7; y += 2){
-    let x = 0;
-    while(x < width){
-      // Chercher la transition blanc→noir
-      while(x < width && !binary[y*width+x]) x++;
-      if(x >= width) break;
-      const startX = x;
-      // Compter les runs : noir, blanc, noir(3x), blanc, noir
-      const runs = [0,0,0,0,0];
-      let ri = 0;
-      let cur = binary[y*width+x];
-      while(x < width && ri < 5){
-        while(x < width && binary[y*width+x] === cur){ runs[ri]++; x++; }
-        ri++; cur = 1 - cur;
-      }
-      if(ri === 5 && checkRatio(runs) && runs[2] >= MIN_MODULE){
-        const cx = startX + runs[0] + runs[1] + Math.floor(runs[2]/2);
-        const cy = y;
-        const mod = runs[2] / 3;
-        // Vérifier verticalement
-        if(verifyVertical(binary, width, height, cx, cy, mod)){
-          // Éviter les doublons
-          const dup = patterns.some(p => Math.abs(p.x-cx) < mod*5 && Math.abs(p.y-cy) < mod*5);
-          if(!dup) patterns.push({ x:cx, y:cy, mod });
-        }
-      }
-    }
-  }
-  return patterns;
-}
-
-function checkRatio(runs){
-  const total = runs.reduce((a,b) => a+b, 0);
-  if(total < 7) return false;
-  const mod = total / 7;
-  const tol = mod * 0.6;
-  return Math.abs(runs[0]-mod) < tol &&
-         Math.abs(runs[1]-mod) < tol &&
-         Math.abs(runs[2]-3*mod) < tol &&
-         Math.abs(runs[3]-mod) < tol &&
-         Math.abs(runs[4]-mod) < tol;
-}
-
-function verifyVertical(binary, width, height, cx, cy, mod){
-  const half = Math.round(3.5 * mod);
-  const y0 = Math.max(0, cy - half), y1 = Math.min(height-1, cy + half);
-  const runs = [];
-  let cur = binary[y0*width+cx];
-  let cnt = 0;
-  for(let y = y0; y <= y1; y++){
-    const v = binary[y*width+cx];
-    if(v === cur) cnt++;
-    else { runs.push(cnt); cnt=1; cur=v; }
-  }
-  runs.push(cnt);
-  // On veut au moins 5 runs avec ratio correct
-  for(let i = 0; i <= runs.length-5; i++){
-    if(checkRatio(runs.slice(i, i+5))) return true;
-  }
-  return false;
-}
-
-function extractAndDecode(binary, width, height, finders){
-  if(finders.length < 3) return null;
-  // Trier pour identifier TL, TR, BL
-  const sorted = finders.slice(0,3).sort((a,b) => a.y !== b.y ? a.y-b.y : a.x-b.x);
-  const top = sorted.slice(0,2).sort((a,b) => a.x-b.x);
-  const bot = sorted[2];
-
-  const tl = top[0], tr = top[1], bl = bot;
-  const mod = (tl.mod + tr.mod + bl.mod) / 3;
-
-  // Taille estimée du QR
-  const qrSize = Math.round(Math.max(
-    Math.hypot(tr.x-tl.x, tr.y-tl.y),
-    Math.hypot(bl.x-tl.x, bl.y-tl.y)
-  ) / mod) + 7;
-
-  if(qrSize < 21 || qrSize > 177) return null;
-  // Arrondir à version valide (21 + multiples de 4)
-  const version = Math.round((qrSize - 17) / 4);
-  const size = 17 + 4 * version;
-
-  // Matrice de transformation perspective (homographie simplifiée)
-  const grid = sampleQRGrid(binary, width, height, tl, tr, bl, size, mod);
-  if(!grid) return null;
-
-  return decodeQRMatrix(grid, size, version);
-}
-
-function sampleQRGrid(binary, width, height, tl, tr, bl, size, mod){
-  const grid = new Uint8Array(size * size);
-  // Vecteurs de direction
-  const dx_h = (tr.x - tl.x) / (size - 1);
-  const dy_h = (tr.y - tl.y) / (size - 1);
-  const dx_v = (bl.x - tl.x) / (size - 1);
-  const dy_v = (bl.y - tl.y) / (size - 1);
-
-  // Point de départ : 3.5 modules avant TL (bord du finder)
-  const ox = tl.x - 3 * dx_h - 3 * dx_v;
-  const oy = tl.y - 3 * dy_h - 3 * dy_v;
-
-  for(let row = 0; row < size; row++){
-    for(let col = 0; col < size; col++){
-      const px = Math.round(ox + col*dx_h + row*dx_v);
-      const py = Math.round(oy + col*dy_h + row*dy_v);
-      if(px < 0 || px >= width || py < 0 || py >= height) continue;
-      grid[row*size+col] = binary[py*width+px];
-    }
-  }
-  return grid;
-}
-
-function decodeQRMatrix(grid, size, version){
-  // Masque de format (lire depuis positions fixes)
-  // Format info : bits 0-7 autour du finder pattern TL
-  const formatBits = readFormatBits(grid, size);
-  if(formatBits === null) return null;
-
-  const ecLevel = (formatBits >> 3) & 3;
-  const maskPattern = formatBits & 7;
-
-  // Démaskage
-  const unmasked = applyMask(grid, size, maskPattern);
-
-  // Lire les data bits (zigzag)
-  const dataBits = readDataBits(unmasked, size, version);
-  if(!dataBits) return null;
-
-  // Décoder le mode et les caractères
-  return decodeDataBits(dataBits, version);
-}
-
-function readFormatBits(grid, size){
-  // 15 bits de format autour du finder TL
-  const pos = [
-    [8,0],[8,1],[8,2],[8,3],[8,4],[8,5],[8,7],[8,8],
-    [7,8],[5,8],[4,8],[3,8],[2,8],[1,8],[0,8]
-  ];
-  let bits = 0;
-  for(let i = 0; i < 15; i++){
-    const [r,c] = pos[i];
-    bits = (bits << 1) | (grid[r*size+c] ? 1 : 0);
-  }
-  // XOR avec masque de format
-  bits ^= 0x5412;
-  // Vérification BCH simplifiée (on accepte si pas trop d'erreurs)
-  const ec = bchFormat(bits >> 10);
-  if(((bits >> 10) ^ (bits & 0x1FF)) !== 0 ){
-    // Essayer format secondaire
-    const pos2 = [[8,size-8],[8,size-7],[8,size-6],[8,size-5],[8,size-4],
-                  [8,size-3],[8,size-2],[size-7,8],[size-6,8],[size-5,8],
-                  [size-4,8],[size-3,8],[size-2,8],[size-1,8]];
-    let bits2 = 0;
-    for(let i=0;i<7;i++) bits2=(bits2<<1)|(grid[8*size+(size-8+i)]?1:0);
-    for(let i=0;i<8;i++) bits2=(bits2<<1)|(grid[(size-7+i)*size+8]?1:0);
-    bits2 ^= 0x5412;
-    bits = bits2;
-  }
-  return bits;
-}
-
-function bchFormat(data){
-  let d = data << 10;
-  const G = 0x537;
-  for(let i = 4; i >= 0; i--)
-    if((d >> (i+10)) & 1) d ^= G << i;
-  return d & 0x3FF;
-}
-
-function applyMask(grid, size, pattern){
-  const out = new Uint8Array(grid);
-  for(let r = 0; r < size; r++){
-    for(let c = 0; c < size; c++){
-      if(isFunctionModule(r, c, size)) continue;
-      let mask = false;
-      switch(pattern){
-        case 0: mask = (r+c)%2===0; break;
-        case 1: mask = r%2===0; break;
-        case 2: mask = c%3===0; break;
-        case 3: mask = (r+c)%3===0; break;
-        case 4: mask = (Math.floor(r/2)+Math.floor(c/3))%2===0; break;
-        case 5: mask = (r*c)%2+(r*c)%3===0; break;
-        case 6: mask = ((r*c)%2+(r*c)%3)%2===0; break;
-        case 7: mask = ((r+c)%2+(r*c)%3)%2===0; break;
-      }
-      if(mask) out[r*size+c] ^= 1;
-    }
-  }
-  return out;
-}
-
-function isFunctionModule(r, c, size){
-  // Finder patterns + separators
-  if(r < 9 && c < 9) return true;
-  if(r < 9 && c >= size-8) return true;
-  if(r >= size-8 && c < 9) return true;
-  // Timing
-  if(r === 6 || c === 6) return true;
-  // Dark module
-  if(r === size-8 && c === 8) return true;
-  return false;
-}
-
-function readDataBits(grid, size, version){
-  const bits = [];
-  let dir = -1; // -1 = up, 1 = down
-  let r = size - 1;
-
-  for(let c = size - 1; c >= 1; c -= 2){
-    if(c === 6) c--; // skip timing column
-    const cc = c;
-    for(let i = 0; i < size; i++){
-      const row = dir === -1 ? r - i : r + i - (size - 1);
-      if(row < 0 || row >= size) continue;
-      for(let d = 0; d < 2; d++){
-        const col = cc - d;
-        if(col < 0) continue;
-        if(!isFunctionModule(row, col, size))
-          bits.push(grid[row*size+col]);
-      }
-    }
-    r = dir === -1 ? 0 : size - 1;
-    dir = -dir;
-  }
-  return bits;
-}
-
-function decodeDataBits(bits, version){
-  let pos = 0;
-  function readBits(n){ let v=0; for(let i=0;i<n;i++) v=(v<<1)|(bits[pos++]||0); return v; }
-
-  const mode = readBits(4);
-  let result = '';
-
-  try {
-    if(mode === 4){ // Byte mode
-      const charCount = readBits(version < 10 ? 8 : 16);
-      for(let i = 0; i < charCount; i++) result += String.fromCharCode(readBits(8));
-      // Décoder UTF-8 si nécessaire
-      try { result = decodeURIComponent(escape(result)); } catch(e){}
-    } else if(mode === 2){ // Alphanumeric
-      const charCount = readBits(version < 10 ? 9 : 11);
-      const CHARS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:';
-      for(let i = 0; i < Math.floor(charCount/2); i++){
-        const v = readBits(11);
-        result += CHARS[Math.floor(v/45)] + CHARS[v%45];
-      }
-      if(charCount % 2) result += CHARS[readBits(6)];
-    } else if(mode === 1){ // Numeric
-      const charCount = readBits(version < 10 ? 10 : 12);
-      // groupes de 3, 2, 1
-      let rem = charCount;
-      while(rem >= 3){ result += readBits(10).toString().padStart(3,'0'); rem-=3; }
-      if(rem===2) result += readBits(7).toString().padStart(2,'0');
-      if(rem===1) result += readBits(4).toString();
-    }
-  } catch(e){ return null; }
-
-  return result || null;
-}
-
-// ── Commun ──
+// ═══ Traitement du code scanné ═══
 function handleScannedCode(raw){
-  try {
-    let dataStr = '';
-    if(raw.includes('?d=') || raw.includes('&d=')){
-      const qIdx = raw.indexOf('?');
-      const params = new URLSearchParams(raw.slice(qIdx + 1));
-      dataStr = params.get('d') || '';
+  try{
+    let dataStr='';
+    if(raw.includes('?d=')||raw.includes('&d=')){
+      const qIdx=raw.indexOf('?');
+      const params=new URLSearchParams(raw.slice(qIdx+1));
+      dataStr=params.get('d')||'';
     } else {
-      dataStr = raw;
+      dataStr=raw;
     }
     if(!dataStr) throw new Error('Paramètre d= manquant dans le QR');
 
-    const json = LZString.decompressFromEncodedURIComponent(dataStr);
+    const json=LZString.decompressFromEncodedURIComponent(dataStr);
     if(!json) throw new Error('Décompression échouée — QR peut-être tronqué');
-    const data = JSON.parse(json);
+    const data=JSON.parse(json);
     if(!data.runner?.name) throw new Error('Format de données invalide');
 
-    const box = document.getElementById('scannerBox');
-    if(box){ box.classList.remove('flash'); void box.offsetWidth; box.classList.add('flash'); }
+    const box=document.getElementById('scannerBox');
+    if(box){box.classList.remove('flash');void box.offsetWidth;box.classList.add('flash');}
 
     scanCount++;
     addEntry(data);
-    setStatus('✓ ' + data.runner.name + ' ajouté !', 'ok');
-    document.getElementById('scannerCounter').textContent =
-      scanCount + ' QR code'+(scanCount>1?'s':'')+' scanné'+(scanCount>1?'s':'');
+    setStatus('✓ '+data.runner.name+' ajouté !','ok');
+    document.getElementById('scannerCounter').textContent=
+      scanCount+' QR code'+(scanCount>1?'s':'')+' scanné'+(scanCount>1?'s':'');
     if(navigator.vibrate) navigator.vibrate([100,50,100]);
 
-    // Sur iOS : réinitialiser l'input pour le prochain scan
     if(isIOS){
-      setTimeout(() => {
-        document.getElementById('iosCapture').value = '';
-        document.getElementById('capturePreview').style.display = 'none';
-        setStatus('Prêt pour le prochain QR code', '');
-      }, 2000);
+      setTimeout(()=>{
+        document.getElementById('iosCapture').value='';
+        document.getElementById('capturePreview').style.display='none';
+        setStatus('Prêt pour le prochain QR code','');
+      },2000);
     }
   } catch(e){
-    setStatus('⚠ ' + e.message, 'err');
+    setStatus('⚠ '+e.message,'err');
   }
 }
 
 async function toggleTorch(){
   if(!scannerStream) return;
-  const track = scannerStream.getVideoTracks()[0];
-  torchOn = !torchOn;
-  try {
-    await track.applyConstraints({ advanced:[{ torch:torchOn }] });
-    document.getElementById('btnTorch').textContent = torchOn ? '🔦 ON' : '🔦 Torche';
-  } catch(e){ toast('Torche non supportée',true); torchOn=false; }
+  const track=scannerStream.getVideoTracks()[0];
+  torchOn=!torchOn;
+  try{
+    await track.applyConstraints({advanced:[{torch:torchOn}]});
+    document.getElementById('btnTorch').textContent=torchOn?'🔦 ON':'🔦 Torche';
+  } catch(e){toast('Torche non supportée',true);torchOn=false;}
 }
 
 function stopScanner(){
-  scannerActive = false;
+  scannerActive=false;
   cancelAnimationFrame(scannerRAF);
-  if(scannerStream){ scannerStream.getTracks().forEach(t=>t.stop()); scannerStream=null; }
+  if(scannerStream){scannerStream.getTracks().forEach(t=>t.stop());scannerStream=null;}
   document.getElementById('scannerModal').classList.remove('open');
-  const video = document.getElementById('scannerVideo');
-  if(video) video.srcObject = null;
-  document.getElementById('modeVideo').style.display = 'none';
-  document.getElementById('modePhoto').style.display = 'none';
-  document.getElementById('capturePreview').style.display = 'none';
-  document.getElementById('iosCapture').value = '';
-  document.getElementById('scannerCounter').textContent = '';
-  document.getElementById('camSelect').style.display = 'none';
-  scanCount = 0; lastScanned = '';
+  const video=document.getElementById('scannerVideo');
+  if(video) video.srcObject=null;
+  document.getElementById('modeVideo').style.display='none';
+  document.getElementById('modePhoto').style.display='none';
+  document.getElementById('capturePreview').style.display='none';
+  document.getElementById('iosCapture').value='';
+  document.getElementById('scannerCounter').textContent='';
+  document.getElementById('camSelect').style.display='none';
+  scanCount=0;lastScanned='';
 }
 
-function setStatus(msg, cls){
-  const el = document.getElementById('scannerStatus');
-  el.textContent = msg;
-  el.className = 'scanner-status' + (cls ? ' '+cls : '');
+function setStatus(msg,cls){
+  const el=document.getElementById('scannerStatus');
+  el.textContent=msg;
+  el.className='scanner-status'+(cls?' '+cls:'');
 }
 
-document.getElementById('scannerModal').addEventListener('click', function(e){
-  if(e.target === this) stopScanner();
+document.getElementById('scannerModal').addEventListener('click',function(e){
+  if(e.target===this) stopScanner();
 });
 
 // ════════════════════════════════════════════════════════
 //  BOOT
 // ════════════════════════════════════════════════════════
 render();
-checkURLOnLoad();</script>
+checkURLOnLoad();
+</script>
 </body>
 </html>
